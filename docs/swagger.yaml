@@ -1,0 +1,440 @@
+openapi: 3.0.3
+info:
+  title: CrowApp API Documentation
+  description: |
+    Documentation de l'API CrowApp pour l'authentification et la gestion des utilisateurs.
+    
+    ## Authentification
+    Cette API utilise JWT (JSON Web Token) pour l'authentification. 
+    
+    ### Comment utiliser l'authentification:
+    1. Utilisez l'endpoint `/auth/login` pour obtenir un token
+    2. Incluez le token dans l'en-tête Authorization: `Bearer {token}`
+    3. Utilisez ce token pour accéder aux endpoints protégés
+    
+  version: 1.0.0
+  contact:
+    name: CrowApp API Support
+    email: support@crowapp.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8000/api
+    description: Serveur de développement local
+  - url: https://api.crowapp.com
+    description: Serveur de production
+
+tags:
+  - name: Authentication
+    description: Endpoints pour l'authentification des utilisateurs
+  - name: User
+    description: Endpoints pour la gestion des utilisateurs
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Inscription d'un nouvel utilisateur
+      description: Créer un nouveau compte utilisateur avec email et mot de passe
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+                - password_confirmation
+              properties:
+                name:
+                  type: string
+                  description: Nom complet de l'utilisateur
+                  example: "John Doe"
+                  minLength: 2
+                  maxLength: 255
+                email:
+                  type: string
+                  format: email
+                  description: Adresse email unique de l'utilisateur
+                  example: "john.doe@example.com"
+                password:
+                  type: string
+                  format: password
+                  description: Mot de passe (minimum 8 caractères)
+                  example: "password123"
+                  minLength: 8
+                password_confirmation:
+                  type: string
+                  format: password
+                  description: Confirmation du mot de passe
+                  example: "password123"
+                  minLength: 8
+      responses:
+        '201':
+          description: Utilisateur créé avec succès
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    description: Token JWT pour l'authentification
+                    example: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+                  token_type:
+                    type: string
+                    description: Type de token
+                    example: "bearer"
+                  expires_in:
+                    type: integer
+                    description: Durée de validité du token en secondes
+                    example: 3600
+                  user:
+                    $ref: '#/components/schemas/User'
+        '422':
+          description: Erreur de validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '500':
+          description: Erreur serveur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Connexion utilisateur
+      description: Authentifier un utilisateur et obtenir un token JWT
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: Adresse email de l'utilisateur
+                  example: "john.doe@example.com"
+                password:
+                  type: string
+                  format: password
+                  description: Mot de passe de l'utilisateur
+                  example: "password123"
+      responses:
+        '200':
+          description: Connexion réussie
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    description: Token JWT pour l'authentification
+                    example: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+                  token_type:
+                    type: string
+                    description: Type de token
+                    example: "bearer"
+                  expires_in:
+                    type: integer
+                    description: Durée de validité du token en secondes
+                    example: 3600
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Identifiants invalides
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Unauthorized"
+        '422':
+          description: Erreur de validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '500':
+          description: Erreur serveur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Déconnexion utilisateur
+      description: Invalider le token JWT actuel et déconnecter l'utilisateur
+      operationId: logout
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Déconnexion réussie
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Successfully logged out"
+        '401':
+          description: Token invalide ou expiré
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Unauthenticated"
+        '500':
+          description: Erreur serveur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Renouveler le token
+      description: Obtenir un nouveau token JWT en utilisant le token actuel
+      operationId: refresh
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Token renouvelé avec succès
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    description: Nouveau token JWT
+                    example: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+                  token_type:
+                    type: string
+                    description: Type de token
+                    example: "bearer"
+                  expires_in:
+                    type: integer
+                    description: Durée de validité du nouveau token en secondes
+                    example: 3600
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Token invalide ou expiré
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Unauthenticated"
+        '500':
+          description: Erreur serveur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Obtenir les informations de l'utilisateur connecté
+      description: Récupérer les données de l'utilisateur actuellement authentifié
+      operationId: me
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Informations utilisateur récupérées avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Token invalide ou expiré
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Unauthenticated"
+        '500':
+          description: Erreur serveur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /user:
+    get:
+      tags:
+        - User
+      summary: Obtenir les informations de l'utilisateur (route alternative)
+      description: Route alternative pour récupérer les données de l'utilisateur connecté
+      operationId: getUser
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Informations utilisateur récupérées avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Token invalide ou expiré
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Unauthenticated"
+        '500':
+          description: Erreur serveur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtenu via l'endpoint /auth/login
+        
+        Format: `Bearer {token}`
+        
+        Exemple: `Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...`
+
+  schemas:
+    User:
+      type: object
+      description: Modèle de données utilisateur
+      properties:
+        id:
+          type: integer
+          description: Identifiant unique de l'utilisateur
+          example: 1
+          readOnly: true
+        name:
+          type: string
+          description: Nom complet de l'utilisateur
+          example: "John Doe"
+          maxLength: 255
+        email:
+          type: string
+          format: email
+          description: Adresse email unique de l'utilisateur
+          example: "john.doe@example.com"
+          maxLength: 255
+        email_verified_at:
+          type: string
+          format: date-time
+          description: Date et heure de vérification de l'email
+          example: "2024-01-15T10:30:00.000000Z"
+          nullable: true
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          description: Date et heure de création du compte
+          example: "2024-01-15T10:30:00.000000Z"
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          description: Date et heure de dernière mise à jour
+          example: "2024-01-15T10:30:00.000000Z"
+          readOnly: true
+      required:
+        - id
+        - name
+        - email
+        - created_at
+        - updated_at
+
+    ValidationError:
+      type: object
+      description: Erreur de validation des données
+      properties:
+        message:
+          type: string
+          description: Message d'erreur principal
+          example: "The given data was invalid."
+        errors:
+          type: object
+          description: Détails des erreurs de validation par champ
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            email:
+              - "The email field is required."
+              - "The email must be a valid email address."
+            password:
+              - "The password must be at least 8 characters."
+
+    Error:
+      type: object
+      description: Erreur générale du serveur
+      properties:
+        error:
+          type: string
+          description: Message d'erreur
+          example: "Internal Server Error"
+        message:
+          type: string
+          description: Description détaillée de l'erreur
+          example: "Une erreur inattendue s'est produite."
+        code:
+          type: integer
+          description: Code d'erreur HTTP
+          example: 500
+
+security:
+  - bearerAuth: []
+
+externalDocs:
+  description: Documentation Laravel
+  url: https://laravel.com/docs
