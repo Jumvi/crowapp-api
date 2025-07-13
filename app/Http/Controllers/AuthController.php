@@ -347,31 +347,36 @@ class AuthController extends Controller
     public function updateUser(Request $request): JsonResponse
     {
         $user = auth()->user();
-        $this->authorize('update', $user);
+        
+        // Vérifier que l'utilisateur est connecté
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+        
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255',
+            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
             'phone' => 'nullable|string|max:20',
             'location' => 'nullable|string|max:255',
-            'role' => 'nullable|enum:' . UserType::class
+            'role' => ['nullable', 'string', new Enum(UserType::class)]
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
 
+        // Mettre à jour les données utilisateur
         $user->update([
-            'bame' => '$request->name',
-            'email' => '$request->email',
-            'phone' => '$request->phone',
-            'location' => '$request->location',
-            'userType' => '$request->userType'
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'location' => $request->location,
+            'role' => $request->role
         ]);
 
-        $user->save();
         return response()->json([
-            'message'=> 'User successfully updated',
-            'user' => $user
+            'message' => 'User successfully updated',
+            'user' => $user->fresh() // Récupérer les données fraîches de la DB
         ]);
     }
 }
