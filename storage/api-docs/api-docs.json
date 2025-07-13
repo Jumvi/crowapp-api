@@ -1,0 +1,537 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "CrowApp API Documentation",
+        "description": "Documentation de l'API CrowApp pour l'authentification et la gestion des utilisateurs.\n\n## Authentification\nCette API utilise JWT (JSON Web Token) pour l'authentification.\n\n### Comment utiliser l'authentification:\n1. Utilisez l'endpoint `/auth/login` pour obtenir un token\n2. Incluez le token dans l'en-tête Authorization: `Bearer {token}`\n3. Utilisez ce token pour accéder aux endpoints protégés",
+        "contact": {
+            "name": "CrowApp API Support",
+            "email": "support@crowapp.com"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        },
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8000/api",
+            "description": "Serveur de développement local"
+        },
+        {
+            "url": "https://api.crowapp.com",
+            "description": "Serveur de production"
+        }
+    ],
+    "paths": {
+        "/auth/login": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Connexion utilisateur",
+                "description": "Authentifier un utilisateur et obtenir un token JWT",
+                "operationId": "login",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "john.doe@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "password123"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Connexion réussie",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "access_token": {
+                                            "type": "string",
+                                            "example": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+                                        },
+                                        "token_type": {
+                                            "type": "string",
+                                            "example": "bearer"
+                                        },
+                                        "expires_in": {
+                                            "type": "integer",
+                                            "example": 3600
+                                        },
+                                        "user": {
+                                            "$ref": "#/components/schemas/User"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Identifiants invalides"
+                    },
+                    "422": {
+                        "description": "Erreur de validation"
+                    }
+                }
+            }
+        },
+        "/auth/register": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Inscription d'un nouvel utilisateur",
+                "description": "Créer un nouveau compte utilisateur avec email et mot de passe",
+                "operationId": "register",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "email",
+                                    "password",
+                                    "password_confirmation"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "John Doe"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "john.doe@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "password123"
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "password123"
+                                    },
+                                    "phone": {
+                                        "description": "Numéro de téléphone (optionnel)",
+                                        "type": "string",
+                                        "example": "+33123456789"
+                                    },
+                                    "location": {
+                                        "description": "Localisation (optionnel)",
+                                        "type": "string",
+                                        "example": "Paris, France"
+                                    },
+                                    "userType": {
+                                        "description": "Type d'utilisateur (optionnel)",
+                                        "type": "string",
+                                        "example": "investor"
+                                    },
+                                    "investmentTotal": {
+                                        "description": "Montant total des investissements (optionnel)",
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 10000.5
+                                    },
+                                    "projectSupported": {
+                                        "description": "Nombre de projets supportés (optionnel)",
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 5
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Utilisateur créé avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "User successfully registered"
+                                        },
+                                        "user": {
+                                            "$ref": "#/components/schemas/User"
+                                        },
+                                        "token": {
+                                            "type": "string",
+                                            "example": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation"
+                    }
+                }
+            }
+        },
+        "/auth/verify-otp": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Vérifier le code OTP",
+                "description": "Vérifier le code OTP envoyé à l'utilisateur",
+                "operationId": "verifyOtp",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "otp": {
+                                        "type": "integer",
+                                        "example": 123456
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OTP vérifié avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "OTP verified successfully"
+                                        },
+                                        "user": {
+                                            "$ref": "#/components/schemas/User"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "OTP invalide ou expiré"
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Renouveler le token",
+                "description": "Obtenir un nouveau token JWT en utilisant le token actuel",
+                "operationId": "refresh",
+                "responses": {
+                    "200": {
+                        "description": "Token renouvelé avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "access_token": {
+                                            "type": "string",
+                                            "example": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+                                        },
+                                        "token_type": {
+                                            "type": "string",
+                                            "example": "bearer"
+                                        },
+                                        "expires_in": {
+                                            "type": "integer",
+                                            "example": 3600
+                                        },
+                                        "user": {
+                                            "$ref": "#/components/schemas/User"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token invalide ou expiré"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/auth/me": {
+            "get": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Obtenir les informations de l'utilisateur connecté",
+                "description": "Récupérer les données de l'utilisateur actuellement authentifié",
+                "operationId": "me",
+                "responses": {
+                    "200": {
+                        "description": "Informations utilisateur récupérées avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/User"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token invalide ou expiré"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/auth/user": {
+            "put": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Mettre à jour les informations de l'utilisateur",
+                "description": "Mettre à jour les informations de l'utilisateur connecté",
+                "operationId": "updateUser",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "email"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "John Doe"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "john.doe@example.com"
+                                    },
+                                    "phone": {
+                                        "type": "string",
+                                        "example": "+123456789"
+                                    },
+                                    "location": {
+                                        "type": "string",
+                                        "example": "New York, USA"
+                                    },
+                                    "role": {
+                                        "type": "string",
+                                        "example": "user"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Informations utilisateur mises à jour avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/User"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token invalide ou expiré"
+                    },
+                    "403": {
+                        "description": "Accès refusé"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/user": {
+            "get": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Obtenir les informations de l'utilisateur (route alternative)",
+                "description": "Route alternative pour récupérer les données de l'utilisateur connecté",
+                "operationId": "getUser",
+                "responses": {
+                    "200": {
+                        "description": "Informations utilisateur récupérées avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/User"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token invalide ou expiré"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "User": {
+                "title": "User",
+                "description": "Modèle de données utilisateur",
+                "required": [
+                    "id",
+                    "name",
+                    "email",
+                    "created_at",
+                    "updated_at"
+                ],
+                "properties": {
+                    "id": {
+                        "description": "Identifiant unique de l'utilisateur",
+                        "type": "integer",
+                        "readOnly": true,
+                        "example": 1
+                    },
+                    "name": {
+                        "description": "Nom complet de l'utilisateur",
+                        "type": "string",
+                        "maxLength": 255,
+                        "example": "John Doe"
+                    },
+                    "email": {
+                        "description": "Adresse email unique de l'utilisateur",
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 255,
+                        "example": "john.doe@example.com"
+                    },
+                    "phone": {
+                        "description": "Numéro de téléphone de l'utilisateur",
+                        "type": "string",
+                        "example": "+33123456789",
+                        "nullable": true
+                    },
+                    "location": {
+                        "description": "Localisation de l'utilisateur",
+                        "type": "string",
+                        "example": "Paris, France",
+                        "nullable": true
+                    },
+                    "userType": {
+                        "description": "Type d'utilisateur",
+                        "type": "string",
+                        "example": "investor",
+                        "nullable": true
+                    },
+                    "investmentTotal": {
+                        "description": "Montant total des investissements",
+                        "type": "number",
+                        "format": "float",
+                        "example": 10000.5,
+                        "nullable": true
+                    },
+                    "projectSupported": {
+                        "description": "Nombre de projets supportés",
+                        "type": "number",
+                        "format": "float",
+                        "example": 5,
+                        "nullable": true
+                    },
+                    "email_verified_at": {
+                        "description": "Date et heure de vérification de l'email",
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "example": "2024-01-15T10:30:00.000000Z",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "description": "Date et heure de création du compte",
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "example": "2024-01-15T10:30:00.000000Z"
+                    },
+                    "updated_at": {
+                        "description": "Date et heure de dernière mise à jour",
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "example": "2024-01-15T10:30:00.000000Z"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "description": "JWT token obtenu via l'endpoint /auth/login\n\nFormat: `Bearer {token}`\n\nExemple: `Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...`",
+                "bearerFormat": "JWT",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Authentication",
+            "description": "Endpoints pour l'authentification des utilisateurs"
+        },
+        {
+            "name": "User",
+            "description": "Endpoints pour la gestion des utilisateurs"
+        }
+    ]
+}

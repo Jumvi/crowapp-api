@@ -14,19 +14,25 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-// Routes publiques
+// Route de test
+Route::get('/test', function () {
+    return response()->json(['message' => 'API fonctionnelle']);
+});
 
-$AuthController = App\Http\Controllers\AuthController::class;
-Route::post('/auth/login', [$AuthController, 'login']);
-Route::post('/auth/register', [$AuthController, 'register']);
+// Routes publiques
+use App\Http\Controllers\AuthController;
+
+Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/auth/register', [AuthController::class, 'register']);
+Route::post('/auth/otp/verify', [AuthController::class, 'verifyOtp']);
 
 // Routes protégées par JWT
-Route::middleware('auth:api')->group(function () use ($AuthController) {
+Route::middleware('auth:api')->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
 
-    Route::post('/auth/logout', [$AuthController, 'logout']);
-    Route::post('/auth/refresh', [$AuthController, 'refresh']);
-    Route::get('/auth/me', [$AuthController, 'me']);
+    Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::post('/auth/refresh', [AuthController::class, 'refresh']);
+    Route::get('/auth/me', [AuthController::class, 'me']);
 });

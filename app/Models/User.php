@@ -70,7 +70,7 @@ class User extends Authenticatable implements JWTSubject
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'role' => UserType::class,
-            'secureOtp' => 'number',
+            'secureOtp' => 'integer',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
