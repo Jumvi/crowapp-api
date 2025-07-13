@@ -14,12 +14,12 @@ class SmsService
      * @param int $otp Code OTP à envoyer
      * @return bool True si l'envoi a réussi, false sinon
      */
-    public static function envoyerSms(string $phone, int $otp): bool
+    public static function envoyerSms($phone, $otp): bool
     {
-        $url = 'https://nmlygy.api.infobip.com/sms/2/text/advanced';
+        $url = env('SMS_API_URL', 'https://nmlygy.api.infobip.com/sms/2/text/advanced');
         
         $headers = [
-            'Authorization' => 'App d5819848b9e86ee925a9ec584c4d1d91-9ed8758c-2081-4ac2-9192-b2d136e782dd',
+            'Authorization' => 'App ' . env('SMS_API_KEY'),
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
         ];

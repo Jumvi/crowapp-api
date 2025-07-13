@@ -12,9 +12,12 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Validation\Rules\Enum;
 use App\Enums\UserType;
 use App\Services\SmsService;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class AuthController extends Controller
 {
+    use AuthorizesRequests;
+    
     /**
      * Create a new AuthController instance.
      */
@@ -353,6 +356,9 @@ class AuthController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
         
+        // Autoriser seulement la modification de son propre profil (ou admin)
+        $this->authorize('update', $user);
+        
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email,' . $user->id,
@@ -377,6 +383,21 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'User successfully updated',
             'user' => $user->fresh() // Récupérer les données fraîches de la DB
+        ]);
+    }
+
+    public function deleteUser($id): JsonResponse
+    {
+        $user = auth()->user();
+        $userToDelete = User::findOrFail($id);
+        
+        // Vérifier l'autorisation avec la Policy
+        $this->authorize('delete', $userToDelete);
+        
+        $userToDelete->delete();
+
+        return response()->json([
+            'message' => 'User deleted successfully'
         ]);
     }
 }
