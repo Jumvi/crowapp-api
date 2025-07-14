@@ -38,7 +38,7 @@ class UserPolicy
     public function update(User $user, User $model): bool
     {
         // Only allow updates if the user is the owner or admin of the model
-        if($user->id === $model->id || $user->role === 'admin') {
+        if($user->id === $model->id || $user->role === UserType::ADMIN) {
             return true;
         }
         return false;
