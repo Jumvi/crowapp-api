@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * @OA\Schema(
@@ -138,7 +139,7 @@ class Profil extends Model
     public function getAvatarUrlAttribute(): ?string
     {
         $avatar = $this->avatar();
-        return $avatar ? asset('storage/' . $avatar->path) : null;
+        return $avatar ? $this->generateMediaUrl($avatar) : null;
     }
 
     /**
@@ -147,7 +148,7 @@ class Profil extends Model
     public function getCoverPhotoUrlAttribute(): ?string
     {
         $coverPhoto = $this->coverPhoto();
-        return $coverPhoto ? asset('storage/' . $coverPhoto->path) : null;
+        return $coverPhoto ? $this->generateMediaUrl($coverPhoto) : null;
     }
 
     /**
@@ -156,7 +157,7 @@ class Profil extends Model
     public function getGalleryImageUrlsAttribute(): array
     {
         return $this->galleryImages()->get()->map(function ($image) {
-            return asset('storage/' . $image->path);
+            return $this->generateMediaUrl($image);
         })->toArray();
     }
 
@@ -166,7 +167,7 @@ class Profil extends Model
     public function getVerificationDocumentUrlsAttribute(): array
     {
         return $this->verificationDocuments()->get()->map(function ($document) {
-            return asset('storage/' . $document->path);
+            return $this->generateMediaUrl($document);
         })->toArray();
     }
 
@@ -177,12 +178,60 @@ class Profil extends Model
     {
         $avatar = $this->avatar();
         if ($avatar) {
-            return asset('storage/' . $avatar->path);
+            return $this->generateMediaUrl($avatar);
         }
         
         // Avatar par défaut basé sur les initiales ou genre
         $initials = strtoupper(substr($this->user->name ?? 'U', 0, 1));
         return "https://ui-avatars.com/api/?name={$initials}&background=3B82F6&color=fff&size=200";
+    }
+
+    /**
+     * Génère l'URL du média selon le service de stockage configuré
+     */
+    private function generateMediaUrl($media): string
+    {
+        if (!$media) return '';
+
+        // Si le path contient déjà une URL complète (Cloudinary, AWS S3, etc.)
+        if (str_starts_with($media->path, 'http')) {
+            return $media->path;
+        }
+
+        // Selon la configuration du stockage
+        $storageDriver = config('filesystems.default');
+        
+        switch ($storageDriver) {
+            case 'cloudinary':
+                // Pour Cloudinary, le path contient déjà l'URL ou l'ID
+                return $this->buildCloudinaryUrl($media->path);
+                
+            case 's3':
+                // Pour AWS S3
+                return Storage::disk('s3')->url($media->path);
+                
+            case 'public':
+            case 'local':
+            default:
+                // Pour le stockage local
+                return asset('storage/' . $media->path);
+        }
+    }
+
+    /**
+     * Construit l'URL Cloudinary
+     */
+    private function buildCloudinaryUrl(string $path): string
+    {
+        $cloudName = config('services.cloudinary.cloud_name');
+        
+        // Si le path est déjà une URL complète
+        if (str_starts_with($path, 'http')) {
+            return $path;
+        }
+        
+        // Sinon, construire l'URL Cloudinary
+        return "https://res.cloudinary.com/{$cloudName}/image/upload/{$path}";
     }
 
     /**
