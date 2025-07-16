@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Validation\Rules\Enum;
 use App\Enums\UserType;
@@ -127,19 +128,35 @@ class AuthController extends Controller
 
       $otp = rand(100000, 999999); // Generate a random OTP
       $request->merge(['secureOtp' => $otp]); // Add OTP to request data
-      $user = User::create([
-          'name' => $request->name,
-          'email' => $request->email,
-          'password' => Hash::make($request->password),
-          'phone' => $request->phone,
-          'location' => $request->location,
-          'role' => $request->role,
-          'secureOtp' => $request->secureOtp,
-      ]);
-
-      // Envoi de l'OTP par SMS
-      $smsEnvoye = SmsService::envoyerSms($user->phone, $user->secureOtp);
       
+      // Utiliser une transaction pour s'assurer que l'user et le profil sont créés ensemble
+      DB::beginTransaction();
+      
+      try {
+          $user = User::create([
+              'name' => $request->name,
+              'email' => $request->email,
+              'password' => Hash::make($request->password),
+              'phone' => $request->phone,
+              'location' => $request->location,
+              'role' => $request->role,
+              'secureOtp' => $request->secureOtp,
+          ]);
+
+          
+          // Envoi de l'OTP par SMS
+          $smsEnvoye = SmsService::envoyerSms($user->phone, $user->secureOtp);
+          
+          DB::commit();
+          
+      } catch (\Exception $e) {
+          DB::rollback();
+          return response()->json([
+              'error' => 'Erreur lors de la création du compte',
+              'message' => $e->getMessage()
+          ], 500);
+      }
+
       return response()->json([
           'message' => 'Utilisateur créé avec succès',
           'user' => [
@@ -221,6 +238,10 @@ class AuthController extends Controller
 
         $user->secureOtp = null;
         $user->save();
+       
+        // Créer le profil associé à l'utilisateur
+          $user->profil()->create([]);
+
 
         // Générer le token JWT avec auth()->login()
         try {

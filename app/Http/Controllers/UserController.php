@@ -20,5 +20,18 @@ namespace App\Http\Controllers;
  */
 class UserController extends Controller
 {
-    // Cette classe sert uniquement pour la documentation Swagger de la route /user
+    public function getuserProfile()
+    {
+        $user = auth()->user();
+
+        if(!$user){
+            return response()->json(['message' => 'Utilisateur non trouvé'], 404);
+        }
+
+        $avatar = $user->Profile ?
+            $user->Profile->media()->where('type', 'avatar')->first() :
+            null;
+
+    }
+
 }

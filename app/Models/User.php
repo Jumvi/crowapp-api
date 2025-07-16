@@ -91,4 +91,14 @@ class User extends Authenticatable implements JWTSubject
     {
         return [];
     }
+
+    // Relations
+
+    /**
+     * Relation avec le profil de l'utilisateur
+     */
+    public function profil()
+    {
+        return $this->hasOne(Profil::class);
+    }
 }

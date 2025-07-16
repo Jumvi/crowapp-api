@@ -366,4 +366,5 @@ class Profil extends Model
     {
         return $query->where('gender', $gender);
     }
+    
 }
