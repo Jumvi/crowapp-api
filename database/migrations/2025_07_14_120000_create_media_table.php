@@ -29,8 +29,7 @@ return new class extends Migration
             $table->morphs('mediable'); // mediable_type et mediable_id pour relation polymorphique
             $table->timestamps();
 
-            // Index pour optimiser les requêtes
-            $table->index(['mediable_type', 'mediable_id']);
+            // Index pour optimiser les requêtes (morphs crée déjà l'index pour mediable)
             $table->index('type');
         });
     }

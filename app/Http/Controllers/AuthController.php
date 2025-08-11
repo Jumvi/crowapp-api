@@ -9,11 +9,14 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
-use Tymon\JWTAuth\Facades\JWTAuth;
-use Illuminate\Validation\Rules\Enum;
+
 use App\Enums\UserType;
+use Illuminate\Validation\Rules\Enum;
+
 use App\Services\SmsService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Log;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
 {
@@ -120,7 +123,7 @@ class AuthController extends Controller
         'password'=> 'required|string|min:6|confirmed',
         'phone'=> 'nullable|string|max:20',
         'location'=> 'nullable|string|max:255',
-        'role'=> ['nullable', 'string', 'max:50', new Enum(UserType::class)]
+        'user_type'=> ['nullable', 'string', 'max:50', new Enum(UserType::class)]
       ]);
       if ($validator->fails()) {
           return response()->json($validator->errors(), 422);
@@ -143,7 +146,19 @@ class AuthController extends Controller
               'secureOtp' => $request->secureOtp,
           ]);
 
-          
+          // ✅ Créer automatiquement le profil vide
+          $user->profil()->create([
+              'notification_preferences' => [
+                  'email_notifications' => true,
+                  'push_notifications' => true,
+                  'sms_notifications' => false
+              ],
+              'privacy_settings' => [
+                  'profile_visibility' => 'public',
+                  'contact_visibility' => 'public'
+              ]
+          ]);
+
           // Envoi de l'OTP par SMS
           $smsEnvoye = SmsService::envoyerSms($user->phone, $user->secureOtp);
           
@@ -227,6 +242,8 @@ class AuthController extends Controller
             'otp' => 'required|integer|digits:6',
         ]);
 
+      
+
         if($validator->fails()){
             return response()->json($validator->errors(), 422);
         }
@@ -240,13 +257,23 @@ class AuthController extends Controller
         $user->save();
        
         // Créer le profil associé à l'utilisateur
-          $user->profil()->create([]);
+          $user->profil()->create([
+            'bio' => 'This is a sample bio',
+            'location' => 'Unknown',
+           
+          ]);
 
 
         // Générer le token JWT avec auth()->login()
         try {
-            $token = auth()->login($user);
-            
+            Log::debug('jwt.ttl debug', [
+    'value' => config('jwt.ttl'),
+    'type'  => gettype(config('jwt.ttl')),
+]);
+
+            $token = auth('api')->login($user);
+            dump($token);
+
             return response()->json([
                 'message' => 'OTP verified successfully',
                 'user' => $user,
@@ -255,13 +282,12 @@ class AuthController extends Controller
                 'expires_in' => auth()->factory()->getTTL() * 60
             ], 200);
         } catch (\Exception $e) {
+             Log::error('JWT login failed', ['error' => $e->getMessage()]);
             // Si JWT échoue, on génère un token simple pour l'instant
             return response()->json([
-                'message' => 'OTP verified successfully',
-                'user' => $user,
-                'access_token' => base64_encode('user_' . $user->id . '_' . time()),
-                'token_type' => 'bearer',
-                'expires_in' =>  auth()->factory()->getTTL() * 60,
+                 Log::error('JWT login failed', ['error' => $e->getMessage()]),
+                'message' => 'OTP not verified successfully',
+                'error' => 'JWT generation failed',
                 'jwt_error' => $e->getMessage()
             ], 200);
         }
@@ -323,6 +349,7 @@ class AuthController extends Controller
      */
     public function me(): JsonResponse
     {
+       echo('Fetching authenticated user data');
         return response()->json(auth()->user());
     }
 
@@ -381,25 +408,35 @@ class AuthController extends Controller
         $this->authorize('update', $user);
         
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
+            'name' => 'string|max:255',
+            'email' => 'email|max:255|unique:users,email,' . $user->id,
             'phone' => 'nullable|string|max:20',
             'location' => 'nullable|string|max:255',
-            'role' => ['nullable', 'string', new Enum(UserType::class)]
+            'role' => ['nullable', new Enum(UserType::class)]
         ]);
-
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
 
+        // récupérer uniquement les champs définis dans les règles de validation
+
+        $validated = $validator->validated();
+
+
+        // Si "user_type" est présent et non null, on le cast en enum
+
+        if(!empty($validated['role'])){
+            $validated['role'] = UserType::from($validated['role']);
+        }
+
+        $filtered = array_filter($validated,function($value){
+            return !is_null($value);
+        });
+
+    
+
         // Mettre à jour les données utilisateur
-        $user->update([
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'location' => $request->location,
-            'role' => $request->role
-        ]);
+        $user->update($filtered);
 
         return response()->json([
             'message' => 'User successfully updated',

@@ -28,7 +28,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  */
 class Media extends Model
 {
-    protected $table = 'medias';
+    protected $table = 'media';
 
     protected $fillable = [
         'filename',

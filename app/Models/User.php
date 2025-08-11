@@ -58,7 +58,6 @@ class User extends Authenticatable implements JWTSubject
         'password',
         'remember_token',
     ];
-
     /**
      * Get the attributes that should be cast.
      *
@@ -89,7 +88,11 @@ class User extends Authenticatable implements JWTSubject
      */
     public function getJWTCustomClaims()
     {
-        return [];
+        return [
+            "name" => $this->name,
+            "email" => $this->email,
+            'role' => optional($this->user_type)->value
+        ];
     }
 
     // Relations
