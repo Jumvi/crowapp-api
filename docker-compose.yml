@@ -1,0 +1,54 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: laravel_api
+    volumes:
+      - .:/var/www
+    networks:
+      - laravel
+    environment:
+      APP_ENV: local
+      APP_DEBUG: 'true'
+      DB_CONNECTION: pgsql
+      DB_HOST: db   # <-- très important : on met 'db' (le nom du service), pas localhost
+      DB_PORT: 5432
+      DB_DATABASE: crowapp
+      DB_USERNAME: kadea
+      DB_PASSWORD: admin123
+
+  nginx:
+    image: nginx:alpine
+    container_name: laravel_nginx
+    ports:
+      - "8080:80"
+      - "443:443"
+    volumes:
+      - .:/var/www
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/nginx.conf
+    depends_on:
+      - app
+    networks:
+      - laravel
+
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_DB: crowapp
+      POSTGRES_USER: kadea
+      POSTGRES_PASSWORD: admin123
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - laravel
+
+volumes:
+  pgdata:
+
+networks:
+  laravel:

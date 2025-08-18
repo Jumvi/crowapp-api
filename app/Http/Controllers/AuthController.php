@@ -21,7 +21,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 class AuthController extends Controller
 {
     use AuthorizesRequests;
-    
+
     /**
      * Create a new AuthController instance.
      */
@@ -32,7 +32,7 @@ class AuthController extends Controller
 
     /**
      * Get a JWT via given credentials.
-     * 
+     *
      * @OA\Post(
      *     path="/auth/login",
      *     tags={"Authentication"},
@@ -81,7 +81,7 @@ class AuthController extends Controller
 
     /**
      * Register a User.
-     * 
+     *
      * @OA\Post(
      *     path="/auth/register",
      *     tags={"Authentication"},
@@ -123,7 +123,7 @@ class AuthController extends Controller
         'password'=> 'required|string|min:6|confirmed',
         'phone'=> 'nullable|string|max:20',
         'location'=> 'nullable|string|max:255',
-        'user_type'=> ['nullable', 'string', 'max:50', new Enum(UserType::class)]
+        'role'=> ['nullable', 'string', 'max:50', new Enum(UserType::class)]
       ]);
       if ($validator->fails()) {
           return response()->json($validator->errors(), 422);
@@ -131,10 +131,10 @@ class AuthController extends Controller
 
       $otp = rand(100000, 999999); // Generate a random OTP
       $request->merge(['secureOtp' => $otp]); // Add OTP to request data
-      
+
       // Utiliser une transaction pour s'assurer que l'user et le profil sont créés ensemble
       DB::beginTransaction();
-      
+
       try {
           $user = User::create([
               'name' => $request->name,
@@ -161,9 +161,9 @@ class AuthController extends Controller
 
           // Envoi de l'OTP par SMS
           $smsEnvoye = SmsService::envoyerSms($user->phone, $user->secureOtp);
-          
+
           DB::commit();
-          
+
       } catch (\Exception $e) {
           DB::rollback();
           return response()->json([
@@ -190,7 +190,7 @@ class AuthController extends Controller
 
     /**
      * Log the user out (Invalidate the token).
-     * 
+     *
      * @OA\Post(
      *     path="/auth/logout",
      *     tags={"Authentication"},
@@ -242,12 +242,12 @@ class AuthController extends Controller
             'otp' => 'required|integer|digits:6',
         ]);
 
-      
+
 
         if($validator->fails()){
             return response()->json($validator->errors(), 422);
         }
-        
+
         $user = User::where('secureOtp', $request->otp)->first();
         if (!$user) {
             return response()->json(['error' => 'Invalid OTP'], 401);
@@ -255,12 +255,12 @@ class AuthController extends Controller
 
         $user->secureOtp = null;
         $user->save();
-       
+
         // Créer le profil associé à l'utilisateur
           $user->profil()->create([
             'bio' => 'This is a sample bio',
             'location' => 'Unknown',
-           
+
           ]);
 
 
@@ -303,7 +303,7 @@ class AuthController extends Controller
 
     /**
      * Refresh a token.
-     * 
+     *
      * @OA\Post(
      *     path="/auth/refresh",
      *     tags={"Authentication"},
@@ -331,7 +331,7 @@ class AuthController extends Controller
 
     /**
      * Get the authenticated User.
-     * 
+     *
      * @OA\Get(
      *     path="/auth/me",
      *     tags={"Authentication"},
@@ -398,15 +398,15 @@ class AuthController extends Controller
     public function updateUser(Request $request): JsonResponse
     {
         $user = auth()->user();
-        
+
         // Vérifier que l'utilisateur est connecté
         if (!$user) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
-        
+
         // Autoriser seulement la modification de son propre profil (ou admin)
         $this->authorize('update', $user);
-        
+
         $validator = Validator::make($request->all(), [
             'name' => 'string|max:255',
             'email' => 'email|max:255|unique:users,email,' . $user->id,
@@ -420,23 +420,25 @@ class AuthController extends Controller
 
         // récupérer uniquement les champs définis dans les règles de validation
 
-        $validated = $validator->validated();
+        $dataToUpdate = [];
 
+        foreach(['name','email','phone','location','role'] as $field){
+            if(isset($request->$field)){
+                $value = $request->input($field);
+                if($value == null){
+                    continue;
+                }
+                if($field === "role" && !is_null($value)){
+                    $value = UserType::from($value);
+                    $dataToUpdate[$field] = $value;
+                }
 
-        // Si "user_type" est présent et non null, on le cast en enum
-
-        if(!empty($validated['role'])){
-            $validated['role'] = UserType::from($validated['role']);
+                $dataToUpdate[$field] = $value;
+            }
         }
 
-        $filtered = array_filter($validated,function($value){
-            return !is_null($value);
-        });
-
-    
-
         // Mettre à jour les données utilisateur
-        $user->update($filtered);
+        $user->update($dataToUpdate);
 
         return response()->json([
             'message' => 'User successfully updated',
@@ -448,10 +450,10 @@ class AuthController extends Controller
     {
         $user = auth()->user();
         $userToDelete = User::findOrFail($id);
-        
+
         // Vérifier l'autorisation avec la Policy
         $this->authorize('delete', $userToDelete);
-        
+
         $userToDelete->delete();
 
         return response()->json([
